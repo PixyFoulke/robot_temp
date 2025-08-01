@@ -1,0 +1,8 @@
+icspring camera: icspring camer (usb-xhci-hcd.1-1):
+	/dev/video0
+	/dev/video1
+	/dev/media3
+
+
+
+fswebcam -d /dev/video0 /home/pi/Downloads/Robot-website-main/camera/my_image.jpg
