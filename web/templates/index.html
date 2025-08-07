@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Control Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base body and font styles */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for pressed buttons for better feedback */
+        .control-btn:active, .key-pressed {
+            transform: scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+        }
+        /* Specific color for gimbal key presses */
+        #gimbal-left.key-pressed, #gimbal-right.key-pressed {
+            background-color: #0891b2; /* cyan-600 */
+        }
+        /* Specific color for movement key presses */
+        #move-forward.key-pressed, #move-backward.key-pressed, #move-left.key-pressed, #move-right.key-pressed, #turn-left.key-pressed, #turn-right.key-pressed {
+            background-color: #2563eb; /* blue-600 */
+        }
+        /* Hide cursor in keybind input fields */
+        .keybind-input {
+            caret-color: transparent;
+        }
+        
+        /* --- CUSTOM SLIDER STYLES --- */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        /* Track styles for Webkit browsers (horizontal) */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 5px;
+        }
+        /* Thumb styles for Webkit browsers (horizontal) */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            border: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #06b6d4; /* cyan-500 */
+            margin-top: -6px; /* Center thumb on track */
+        }
+        /* Track styles for Firefox (horizontal) */
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            background: #4b5563;
+            border-radius: 5px;
+        }
+        /* Thumb styles for Firefox (horizontal) */
+        input[type=range]::-moz-range-thumb {
+            border: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #06b6d4;
+        }
+
+        /* --- VERTICAL SLIDER CUSTOM STYLES --- */
+        input[type=range].vertical {
+            /* This is the key to making it vertical */
+            -webkit-appearance: slider-vertical; 
+            writing-mode: bt-lr; /* Bottom to top */
+            width: 8px;
+            height: 100%;
+        }
+        
+        input[type=range].vertical::-webkit-slider-runnable-track {
+            width: 8px;
+            height: 100%;
+            background: #4b5563;
+            border-radius: 5px;
+        }
+        
+        input[type=range].vertical::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            border: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #06b6d4;
+            margin-top: 0;
+            margin-left: -6px; /* Center thumb on track */
+        }
+
+        input[type=range].vertical::-moz-range-track {
+            width: 8px;
+            height: 100%;
+            background: #4b5563;
+            border-radius: 5px;
+        }
+        
+        input[type=range].vertical::-moz-range-thumb {
+            border: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #06b6d4;
+            margin-top: 0;
+            margin-left: -6px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-gray-800/50 backdrop-blur-sm shadow-lg p-4 sticky top-0 z-20 flex items-center justify-between">
+        <button id="settings-btn" class="text-gray-400 hover:text-cyan-400 transition-colors duration-200 p-2 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+        <h1 class="text-2xl font-bold text-center text-cyan-400 absolute left-1/2 -translate-x-1/2">Robot Control Interface</h1>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Panel: Camera and Sliders -->
+        <div class="lg:col-span-2 bg-gray-800 rounded-2xl shadow-2xl p-6 flex flex-col">
+            <h2 id="camera-title" class="text-xl font-semibold mb-4 text-center">Camera Feed</h2>
+            
+            <div class="flex flex-grow gap-6">
+                <!-- Video and Horizontal Slider -->
+                <div class="flex-grow flex flex-col">
+                    <div class="flex-grow aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
+                        <img id="camera-feed" src="{{ url_for('video_feed') }}" onerror="this.onerror=null;this.src='https://placehold.co/1280x720/000000/FF0000?text=STREAM+ERROR';" alt="Robot Camera Feed" class="w-full h-full object-cover">
+                    </div>
+                    <!-- Horizontal Slider -->
+                    <div class="pt-4">
+                        <label for="horizontal-slider" class="block mb-2 text-sm font-medium text-center tracking-wider">Horizontal Tilt (Pan)</label>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs font-mono">500</span>
+                            <input type="range" id="horizontal-slider" data-servo="5" min="500" max="2500" value="1500" class="w-full">
+                            <span class="text-xs font-mono">2500</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vertical Slider -->
+                <div class="flex flex-col items-center justify-center py-4">
+                    <label for="vertical-slider" class="mb-2 text-sm font-medium tracking-wider"></label>
+                    <div class="flex-grow flex flex-col items-center justify-center relative">
+                         <span class="absolute top-0 text-xs font-mono -mt-6">2500</span>
+                         <!-- The slider is now correctly oriented with the track top-to-bottom and the labels swapped -->
+                         <input type="range" id="vertical-slider" data-servo="3" min="500" max="2500" value="1500" class="vertical">
+                         <span class="absolute bottom-0 text-xs font-mono -mb-6">500</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Speed Control -->
+            <div class="mt-6 border-t border-gray-700 pt-6">
+                <label for="speed-slider" class="block mb-2 text-sm font-medium text-center tracking-wider">SPEED</label>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="speed-slider" min="0" max="100" value="50" class="w-full">
+                    <span id="speed-value" class="font-bold text-lg w-16 text-center">50%</span>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-4 text-center border-t border-gray-700 pt-4">
+                    <div>
+                        <span id="rpm-value" class="font-bold text-lg text-cyan-400">0</span>
+                        <p class="text-xs text-gray-400 tracking-wider">RPM</p>
+                    </div>
+                    <div>
+                        <span id="fps-value" class="font-bold text-lg text-cyan-400">0.0</span>
+                        <p class="text-xs text-gray-400 tracking-wider">FT/S</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Movement and Systems -->
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-6 flex flex-col space-y-8 justify-center">
+            <div>
+                <h3 id="movement-title" class="text-lg font-semibold mb-3 text-center">Movement</h3>
+                <div class="grid grid-cols-3 grid-rows-3 gap-2 max-w-xs mx-auto">
+                    <div class="col-start-2 row-start-1 flex justify-center"><button id="move-forward" class="control-btn bg-gray-700 hover:bg-blue-600 transition-all duration-200 p-5 rounded-lg w-full"></button></div>
+                    <div class="col-start-1 row-start-2 flex justify-center"><button id="move-left" class="control-btn bg-gray-700 hover:bg-blue-600 transition-all duration-200 p-5 rounded-lg w-full"></button></div>
+                    <div class="col-start-3 row-start-2 flex justify-center"><button id="move-right" class="control-btn bg-gray-700 hover:bg-blue-600 transition-all duration-200 p-5 rounded-lg w-full"></button></div>
+                    <div class="col-start-2 row-start-3 flex justify-center"><button id="move-backward" class="control-btn bg-gray-700 hover:bg-blue-600 transition-all duration-200 p-5 rounded-lg w-full"></button></div>
+                </div>
+            </div>
+            <div>
+                <h3 id="rotation-title" class="text-lg font-semibold mb-3 text-center">Rotation</h3>
+                <div class="flex justify-center gap-4 max-w-xs mx-auto">
+                    <button id="turn-left" class="control-btn bg-gray-700 hover:bg-blue-600 transition-all duration-200 p-4 rounded-lg w-full flex items-center justify-center gap-2"></button>
+                    <button id="turn-right" class="control-btn bg-gray-700 hover:bg-blue-600 transition-all duration-200 p-4 rounded-lg w-full flex items-center justify-center gap-2"></button>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 pt-6">
+                <h3 class="text-lg font-semibold mb-4 text-center">Systems</h3>
+                <div class="flex items-center justify-center gap-4 max-w-xs mx-auto">
+                    <span class="font-medium">Light Bar</span>
+                    <button id="light-bar-toggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors duration-300 bg-gray-600">
+                        <span id="light-bar-switch" class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-300 translate-x-1"></span>
+                    </button>
+                    <span id="light-bar-status" class="font-semibold text-red-400">OFF</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-30 hidden">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md m-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-cyan-400">Keybind Settings</h2>
+                <button id="close-settings-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="keybind-settings-grid" class="grid grid-cols-2 gap-x-8 gap-y-4 mb-6"></div>
+            <div class="flex justify-between mt-8">
+                <button id="reset-keybinds-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Reset to Default</button>
+                <button id="save-keybinds-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 hidden">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-sm m-4 text-center">
+            <h3 id="alert-title" class="text-xl font-bold mb-4"></h3>
+            <p id="alert-message" class="mb-6"></p>
+            <button id="alert-ok-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg">OK</button>
+        </div>
+    </div>
+    
+    <script>
+        // Use a new Map for a more flexible keybinding system
+        let keyMap = new Map();
+        
+        // Default Keybinds
+        const defaultKeybinds = {
+            'w': {action: 'move-forward', label: 'Move Forward'},
+            's': {action: 'move-backward', label: 'Move Backward'},
+            'a': {action: 'move-left', label: 'Move Left'},
+            'd': {action: 'move-right', label: 'Move Right'},
+            'q': {action: 'turn-left', label: 'Turn Left'},
+            'e': {action: 'turn-right', label: 'Turn Right'},
+            'ArrowLeft': {action: 'gimbal-left', label: 'Gimbal Left'},
+            'ArrowRight': {action: 'gimbal-right', label: 'Gimbal Right'},
+            'l': {action: 'light-bar-toggle', label: 'Light Bar Toggle'}
+        };
+
+        // DOM Elements
+        const controlButtons = document.querySelectorAll('.control-btn');
+        const lightBarToggle = document.getElementById('light-bar-toggle');
+        const lightBarSwitch = document.getElementById('light-bar-switch');
+        const lightBarStatus = document.getElementById('light-bar-status');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValueSpan = document.getElementById('speed-value');
+        const rpmValueSpan = document.getElementById('rpm-value');
+        const fpsValueSpan = document.getElementById('fps-value');
+        const horizontalSlider = document.getElementById('horizontal-slider');
+        const verticalSlider = document.getElementById('vertical-slider');
+        const horizontalValue = document.getElementById('horizontal-value');
+        const verticalValue = document.getElementById('vertical-value');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const keybindsGrid = document.getElementById('keybind-settings-grid');
+        const resetKeybindsBtn = document.getElementById('reset-keybinds-btn');
+        const saveKeybindsBtn = document.getElementById('save-keybinds-btn');
+        const alertModal = document.getElementById('alert-modal');
+        const alertTitle = document.getElementById('alert-title');
+        const alertMessage = document.getElementById('alert-message');
+        const alertOkBtn = document.getElementById('alert-ok-btn');
+        
+        // Robot State
+        let robotState = {
+            movementCommand: 'stop',
+            gimbalCommand: 'stop',
+            lightOn: false
+        };
+
+        // Map to hold a reference to currently pressed keys to handle multiple key presses
+        const pressedKeys = new Set();
+        
+        // --- HELPER FUNCTIONS ---
+        function showCustomAlert(title, message) {
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+            alertModal.classList.remove('hidden');
+        }
+
+        function formatKeyName(key) {
+            if (key === ' ') return 'Space';
+            if (key === 'ArrowUp') return '↑';
+            if (key === 'ArrowDown') return '↓';
+            if (key === 'ArrowLeft') return '←';
+            if (key === 'ArrowRight') return '→';
+            return key.toUpperCase();
+        }
+
+        // Updates the UI labels for buttons based on the current keyMap
+        function updateButtonLabels() {
+            // Reverse the keyMap for easy lookup
+            const actionToKeyMap = new Map(Array.from(keyMap, ([key, value]) => [value.action, key]));
+            
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                const action = btn.id;
+                if (actionToKeyMap.has(action)) {
+                    btn.textContent = formatKeyName(actionToKeyMap.get(action));
+                } else {
+                    btn.textContent = ''; // Clear label if no key is bound
+                }
+            });
+        }
+        
+        // Updates the UI to reflect light bar state
+        function updateLightBarUI() {
+            if (robotState.lightOn) {
+                lightBarSwitch.classList.remove('translate-x-1');
+                lightBarSwitch.classList.add('translate-x-6');
+                lightBarToggle.classList.remove('bg-gray-600');
+                lightBarToggle.classList.add('bg-cyan-600');
+                lightBarStatus.textContent = 'ON';
+                lightBarStatus.classList.remove('text-red-400');
+                lightBarStatus.classList.add('text-green-400');
+            } else {
+                lightBarSwitch.classList.remove('translate-x-6');
+                lightBarSwitch.classList.add('translate-x-1');
+                lightBarToggle.classList.remove('bg-cyan-600');
+                lightBarToggle.classList.add('bg-gray-600');
+                lightBarStatus.textContent = 'OFF';
+                lightBarStatus.classList.remove('text-green-400');
+                lightBarStatus.classList.add('text-red-400');
+            }
+        }
+        
+        // Fetches and updates the speed readouts (RPM, FPS)
+        async function updateSpeedReadouts(speed) {
+            try {
+                const response = await fetch('/update_speed', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({speed: speed})
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                rpmValueSpan.textContent = Math.round(data.rpm);
+                fpsValueSpan.textContent = data.fps.toFixed(1);
+            } catch (error) {
+                console.error('Failed to update speed readouts:', error);
+            }
+        }
+        
+        // Sends a command to the Flask server
+        async function sendRobotCommand(command, value) {
+            try {
+                const response = await fetch('/command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ command, value })
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                console.log('Server response:', data);
+                if (command === 'light') {
+                    robotState.lightOn = data.state.lamp_on;
+                    updateLightBarUI();
+                } else if (command === 'swivel') {
+                    // Update internal state based on server response if necessary
+                    // The server handles the swivel, so no UI change needed here.
+                }
+            } catch (error) {
+                console.error('Failed to send command:', error);
+            }
+        }
+        
+        async function sendSwivelCommand(servo, angle) {
+            try {
+                const response = await fetch('/swivel_command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ servo, angle })
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                console.log('Swivel server response:', data);
+            } catch (error) {
+                console.error('Failed to send swivel command:', error);
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        
+        // Keydown handler for movement and gimbal controls
+        document.addEventListener('keydown', (e) => {
+            const key = e.key;
+            if (keyMap.has(key) && !pressedKeys.has(key)) {
+                const action = keyMap.get(key).action;
+                const button = document.getElementById(action);
+                if (button) {
+                    button.classList.add('key-pressed');
+                    // Check if the command is for movement or gimbal
+                    if (action.startsWith('move') || action.startsWith('turn')) {
+                         if (robotState.movementCommand !== action) {
+                            robotState.movementCommand = action;
+                            sendRobotCommand('movement', action);
+                         }
+                    } else if (action.startsWith('gimbal')) {
+                         if (robotState.gimbalCommand !== action) {
+                            robotState.gimbalCommand = action;
+                            sendRobotCommand('gimbal', action);
+                         }
+                    } else if (action === 'light-bar-toggle') {
+                        // Toggle light bar state and send command
+                        sendRobotCommand('light', robotState.lightOn ? 'off' : 'on');
+                    }
+                }
+                pressedKeys.add(key);
+            }
+        });
+
+        // Keyup handler to stop movement
+        document.addEventListener('keyup', (e) => {
+            const key = e.key;
+            if (keyMap.has(key)) {
+                const action = keyMap.get(key).action;
+                const button = document.getElementById(action);
+                if (button) {
+                    button.classList.remove('key-pressed');
+                    // If the released key corresponds to the current movement or gimbal command, stop
+                    if (action === robotState.movementCommand) {
+                        robotState.movementCommand = 'stop';
+                        sendRobotCommand('movement', 'stop');
+                    } else if (action === robotState.gimbalCommand) {
+                        robotState.gimbalCommand = 'stop';
+                        sendRobotCommand('gimbal', 'stop');
+                    }
+                }
+                pressedKeys.delete(key);
+            }
+        });
+        
+        // Touch/mouse event handlers for on-screen buttons
+        controlButtons.forEach(button => {
+            button.addEventListener('mousedown', () => {
+                 const action = button.id;
+                 if (action.startsWith('move') || action.startsWith('turn')) {
+                    sendRobotCommand('movement', action);
+                 } else if (action.startsWith('gimbal')) {
+                    sendRobotCommand('gimbal', action);
+                 }
+            });
+            
+            button.addEventListener('mouseup', () => {
+                const action = button.id;
+                if (action.startsWith('move') || action.startsWith('turn')) {
+                    sendRobotCommand('movement', 'stop');
+                } else if (action.startsWith('gimbal')) {
+                    sendRobotCommand('gimbal', 'stop');
+                }
+            });
+            
+            button.addEventListener('mouseleave', (e) => {
+                // Stop the robot if the mouse leaves the button while pressed
+                if (e.buttons === 1) { // Check if left mouse button is pressed
+                    const action = button.id;
+                    if (action.startsWith('move') || action.startsWith('turn')) {
+                        sendRobotCommand('movement', 'stop');
+                    } else if (action.startsWith('gimbal')) {
+                        sendRobotCommand('gimbal', 'stop');
+                    }
+                }
+            });
+        });
+        
+        // Light bar toggle
+        lightBarToggle.addEventListener('click', () => {
+            sendRobotCommand('light', robotState.lightOn ? 'off' : 'on');
+        });
+
+        // Speed slider
+        speedSlider.addEventListener('input', () => {
+            const speed = speedSlider.value;
+            speedValueSpan.textContent = `${speed}%`;
+            sendRobotCommand('speed', speed);
+            updateSpeedReadouts(speed);
+        });
+
+        // Horizontal slider
+        horizontalSlider.addEventListener('input', () => {
+            const angle = horizontalSlider.value;
+            horizontalValue.textContent = angle;
+            sendSwivelCommand(horizontalSlider.dataset.servo, angle);
+        });
+        
+        // Vertical slider
+        verticalSlider.addEventListener('input', () => {
+            const angle = verticalSlider.value;
+            verticalValue.textContent = angle;
+            sendSwivelCommand(verticalSlider.dataset.servo, angle);
+        });
+
+        // Settings modal
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+            renderKeybindSettings();
+        });
+        
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+        
+        resetKeybindsBtn.addEventListener('click', () => {
+            // Reset to default and re-render
+            keyMap = new Map(Object.entries(defaultKeybinds));
+            renderKeybinds();
+            updateButtonLabels();
+            showCustomAlert("Keybinds Reset", "Keybinds have been reset to default values.");
+        });
+
+        saveKeybindsBtn.addEventListener('click', () => {
+            // In a real app, you would save this to localStorage or a database
+            settingsModal.classList.add('hidden');
+            updateButtonLabels();
+        });
+        
+        // Render the keybind settings grid
+        function renderKeybindSettings() {
+            keybindsGrid.innerHTML = ''; // Clear previous content
+            keyMap.forEach((details, key) => {
+                const settingHtml = `
+                    <div class="flex flex-col">
+                        <label class="text-sm font-medium mb-1">${details.label}</label>
+                        <button class="keybind-input bg-gray-700 hover:bg-gray-600 transition-colors duration-200 p-2 rounded-lg text-center"
+                                data-action="${details.action}">${formatKeyName(key)}</button>
+                    </div>
+                `;
+                keybindsGrid.insertAdjacentHTML('beforeend', settingHtml);
+            });
+            // Re-attach event listeners for the new buttons
+            attachKeybindInputListeners();
+        }
+        
+        function attachKeybindInputListeners() {
+            document.querySelectorAll('.keybind-input').forEach(button => {
+                button.onclick = () => {
+                    const actionToChange = button.dataset.action;
+                    button.textContent = 'Press a key...';
+                    button.classList.add('text-yellow-400');
+                    
+                    const keydownHandler = (e) => {
+                        e.preventDefault();
+                        const newKey = e.key;
+                        
+                        // Check if the new key is already in use
+                        if (keyMap.has(newKey) && keyMap.get(newKey).action !== actionToChange) {
+                            showCustomAlert("Key Already In Use", `The key '${formatKeyName(newKey)}' is already bound to '${keyMap.get(newKey).label}'.`);
+                            button.textContent = formatKeyName(Array.from(keyMap).find(([k, v]) => v.action === actionToChange)[0]);
+                        } else {
+                            const oldKey = Array.from(keyMap).find(([k, v]) => v.action === actionToChange)[0];
+                            const actionDetails = keyMap.get(oldKey);
+                            keyMap.delete(oldKey);
+                            keyMap.set(newKey, actionDetails);
+                            button.textContent = formatKeyName(newKey);
+                        }
+                        
+                        button.classList.remove('text-yellow-400');
+                        document.removeEventListener('keydown', keydownHandler, true);
+                    };
+                    document.addEventListener('keydown', keydownHandler, { once: true, capture: true });
+                }
+            });
+            
+            alertOkBtn.addEventListener('click', () => alertModal.classList.add('hidden'));
+        }
+        
+        // --- INITIAL SETUP ---\
+        function initializeApp() {
+            // Load keybinds from local storage, or use defaults
+            const savedKeybinds = localStorage.getItem('keybinds');
+            if (savedKeybinds) {
+                keyMap = new Map(Object.entries(JSON.parse(savedKeybinds)));
+            } else {
+                keyMap = new Map(Object.entries(defaultKeybinds));
+            }
+            
+            updateLightBarUI();
+            updateButtonLabels();
+            updateSpeedReadouts(speedSlider.value);
+            
+            // Send initial positions for servos to ensure they are centered
+            sendSwivelCommand(horizontalSlider.dataset.servo, horizontalSlider.value);
+            sendSwivelCommand(verticalSlider.dataset.servo, verticalSlider.value);
+            console.log("Robot controller UI initialized.");
+        }
+        
+        initializeApp();
+    </script>
+</body>
+</html>
